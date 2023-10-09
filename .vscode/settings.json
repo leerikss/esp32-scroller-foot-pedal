@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "blecontroller": "cpp",
+        "new": "cpp",
+        "functional": "cpp",
+        "string": "cpp",
+        "*.tcc": "cpp",
+        "system_error": "cpp",
+        "array": "cpp",
+        "regex": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp"
+    }
+}

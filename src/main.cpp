@@ -1,8 +1,9 @@
 #include <Arduino.h>
-#include <BleAbsMouse.h>
+#include <ArduinoJson.h>
+#include <BleAbsMouseWithCallback.cpp>
 #include <Preferences.h>
-#include <esp_wifi.h>
 
+#define NETWORK_NAME        "Scroller Pedal"
 #define PEDAL_PIN           4
 
 #define ACTION_TIME         (500L)
@@ -20,14 +21,13 @@ short y_top;
 short y_bottom;
 unsigned short scroll_amount;
 unsigned short scroll_delay;
-unsigned short page_scroll_amount;
-unsigned short page_scroll_steps;
+unsigned short p_scroll_amount;
+unsigned short p_scroll_steps;
 
 enum states { STOP, WAIT_FOR_ACTION, PAGE_DOWN, PAGE_UP, SCROLL_DOWN, SCROLL_UP };
 
-BleAbsMouse bleAbsMouse("Scroller Pedal");
 Preferences prefs;
-
+DynamicJsonDocument doc(1024);
 states state = STOP;
 unsigned long first_press_ms = 0L;
 short y = Y_BOTTOM;
@@ -38,6 +38,7 @@ unsigned char page_scroll_step = 0;
 
 void read_prefs();
 void save_prefs();
+void update_configs(std::string data);
 
 void set_state_by_action();
 
@@ -48,23 +49,19 @@ void scroll_by_state();
 void scroll(short add_y, short limit_y, short start_y);
 void stop_scroll();
 
-void ws_setup();
-
-void ws_setup() {
-
-}
+BleAbsMouseWithCallback bleMouse(NETWORK_NAME, update_configs);
 
 void setup() {
   Serial.begin(115200);
   pinMode(PEDAL_PIN, INPUT_PULLUP);
-  bleAbsMouse.begin();
+  bleMouse.begin();
   prefs.begin("scroller-pedal", false);
   read_prefs();
 }
 
 void loop() {
 
-  if(!bleAbsMouse.isConnected()) {
+  if(!bleMouse.isConnected()) {
     return;
   }
 
@@ -95,14 +92,80 @@ void read_prefs() {
   y_bottom = prefs.getShort("y_bottom", Y_BOTTOM);
   scroll_amount = prefs.getUShort("scroll_amount", SCROLL_AMOUNT);
   scroll_delay = prefs.getUShort("scroll_delay", SCROLL_DELAY);
-  page_scroll_amount = prefs.getUShort("page_scroll_amount", PAGE_SCROLL_AMOUNT);
-  page_scroll_steps = prefs.getUShort("page_scroll_steps", PAGE_SCROLL_STEPS);
+  p_scroll_amount = prefs.getUShort("p_scroll_amount", PAGE_SCROLL_AMOUNT);
+  p_scroll_steps = prefs.getUShort("p_scroll_steps", PAGE_SCROLL_STEPS);
 
   y = y_bottom;
 }
 
 void save_prefs() {
-  // TODO
+  prefs.putULong("action_time", action_time);
+  prefs.putShort("x", x);
+  prefs.putShort("y_top", y_top);
+  prefs.putShort("y_bottom", y_bottom);
+  prefs.putUShort("scroll_amount", scroll_amount);
+  prefs.putUShort("scroll_delay", scroll_delay);
+  prefs.putUShort("p_scroll_amount", p_scroll_amount);
+  prefs.putUShort("p_scroll_steps", p_scroll_steps);
+  
+  Serial.println("Saving preferences..");
+  Serial.print("action_time ");
+  Serial.println(action_time);
+  Serial.print("x ");
+  Serial.println(x);
+  Serial.print("y_top ");
+  Serial.println(y_top);
+  Serial.print("y_bottom ");
+  Serial.println(y_bottom);
+  Serial.print("scroll_amount ");
+  Serial.println(scroll_amount);
+  Serial.print("scroll_delay ");
+  Serial.println(scroll_delay);
+  Serial.print("p_scroll_amount ");
+  Serial.println(p_scroll_amount);
+  Serial.print("p_scroll_steps ");
+  Serial.println(p_scroll_steps);
+
+}
+
+void update_configs(std::string json) {
+  deserializeJson(doc, json);
+
+  action_time = doc["action_time"];
+  if(action_time < 100L || action_time > 5000L) {
+    action_time = ACTION_TIME;
+  }
+
+  x = doc["x"];
+
+  y_top = doc["y_top"];
+  y_bottom = doc["y_bottom"];
+  if(y_bottom <= y_top) {
+    y_top = Y_TOP;
+    y_bottom = Y_BOTTOM;
+  }
+
+  scroll_amount = doc["scroll_amount"];
+  if(scroll_amount <= 0 || scroll_amount > ( y_bottom - y_top)) {
+    scroll_amount = SCROLL_AMOUNT;
+  }
+
+  scroll_delay = doc["scroll_delay"];
+  if(scroll_delay <= 0 || scroll_delay > 1000) {
+    scroll_delay = SCROLL_DELAY;
+  }
+
+  p_scroll_amount = doc["p_scroll_amount"];
+  if(p_scroll_amount <= 0 || p_scroll_amount > (y_bottom - y_top)) {
+    p_scroll_amount = PAGE_SCROLL_AMOUNT;
+  }
+
+  p_scroll_steps = doc["p_scroll_steps"];
+  if(p_scroll_steps <= 0 || p_scroll_steps > 1000) {
+    p_scroll_steps = PAGE_SCROLL_STEPS;
+  }
+
+  save_prefs();
 }
 
 void set_state_by_action() {
@@ -130,7 +193,7 @@ void handle_pedal_on() {
   switch(state) {
     case STOP:
       Serial.println("Initial press");
-      bleAbsMouse.release();
+      bleMouse.release();
       state = WAIT_FOR_ACTION;
       first_press_ms = millis();
       presses = 1;
@@ -140,6 +203,8 @@ void handle_pedal_on() {
       if(releases == 1) {
         presses = 2;
       }
+      break;
+    default:
       break;
   }
 }
@@ -151,6 +216,8 @@ void handle_pedal_off() {
       break;
     case SCROLL_UP: case SCROLL_DOWN:
       stop_scroll();
+      break;
+    default:
       break;
   }
 }
@@ -166,17 +233,17 @@ void scroll_by_state() {
       break;
     case PAGE_DOWN:
       Serial.print("Handling page down ");
-      scroll(-page_scroll_amount, y_top, y_bottom);
+      scroll(-p_scroll_amount, y_top, y_bottom);
       page_scroll_step++;
-      if(page_scroll_step >= page_scroll_steps) {
+      if(page_scroll_step >= p_scroll_steps) {
         stop_scroll();
       }
       break;
     case PAGE_UP:
       Serial.print("Handling page up ");
-      scroll(page_scroll_amount, y_bottom, y_top);
+      scroll(p_scroll_amount, y_bottom, y_top);
       page_scroll_step++;
-      if(page_scroll_step >= page_scroll_steps) {
+      if(page_scroll_step >= p_scroll_steps) {
         stop_scroll();
       }
       break;
@@ -188,19 +255,22 @@ void scroll_by_state() {
       Serial.print("Scrolling down ");
       scroll(-scroll_amount, y_top, y_bottom);
       break;
+    default:
+      break;
   }
 }
 
 void scroll(short y_amount, short y_limit, short y_start) {
   Serial.println(y);
-  if(y_amount < 0 && y + y_amount < y_limit || y_amount > 0 && y + y_amount > y_limit) {
+  if((y_amount < 0 && y + y_amount < y_limit) || 
+  (y_amount > 0 && y + y_amount > y_limit)) {
     y = y_start;
-    bleAbsMouse.release(); // TODO: Need to delay after release?
-    bleAbsMouse.move(x, y);
+    bleMouse.release();
+    bleMouse.move(x, y);
     delay(prefs.getUInt("scroll_delay", scroll_delay));
   }
   y += y_amount;
-  bleAbsMouse.move(x, y);
+  bleMouse.move(x, y);
 }
 
 void stop_scroll() {
