@@ -1,7 +1,6 @@
 <resources>
-    <string name="load">Load</string>
-    <string name="reset">Reset</string>
-    <string name="save">Save</string>
+    <string name="load">Load Values</string>
+    <string name="save">Save Values</string>
     <string name="app_name">Config Scroller Pedal</string>
     <string name="action_time">Action time in ms (100–5000)</string>
     <string name="x">X–position in px (0–10000)</string>

@@ -1,21 +1,27 @@
 package fi.leif.android.scrollerpedal.config
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.*
+import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
 import android.text.InputType
 import android.view.ViewGroup.LayoutParams.*
 import android.widget.Button
 import android.widget.LinearLayout
 import androidx.annotation.RequiresPermission
+import androidx.core.content.ContextCompat
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
     private var gatt: BluetoothGatt? = null
+    private var loadButton: Button? = null
+    private var saveButton: Button? = null
 
     @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,17 +29,16 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         addUIInputTexts()
 
-        val saveButton: Button = findViewById(R.id.save_button)
-        saveButton.setOnClickListener {
-            saveValidValues()
-        }
+        saveButton = findViewById(R.id.save_button)
+        saveButton?.setOnClickListener { saveValidValues() }
 
-        val loadButton: Button = findViewById(R.id.load_button)
-        loadButton.setOnClickListener{
-            gatt?.discoverServices()
-        }
+        loadButton = findViewById(R.id.load_button)
+        loadButton?.setOnClickListener{ gatt?.discoverServices() }
 
-        connectToPairedDevice()
+        // Attempt to reconnect interval
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate({ gatt ?: connectToDevice() }, 0, 2, TimeUnit.SECONDS)
+
+        connectToDevice()
     }
 
     @SuppressLint("DiscouragedApi")
@@ -61,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     @SuppressLint("DiscouragedApi")
     @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
     private fun saveValidValues() {
@@ -82,23 +88,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
-    fun connectToPairedDevice() {
-        val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
-        val device = bluetoothAdapter?.bondedDevices?.filter { device -> device.name == Config.deviceName }?.getOrNull(0)
-        device?.let { it.connectGatt(this, false, bluetoothGattCallback) } ?: {
-            Handler().postDelayed({
-                connectToPairedDevice()
-            }, 2000)
+    private fun hasPermission(): Boolean {
+        return if( ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED) {
+            true
+        } else {
+            this.requestPermissions(arrayOf(Manifest.permission.BLUETOOTH), 1)
+            false
         }
     }
-
-    private fun enableAll(enabled: Boolean) {
-        this@MainActivity.runOnUiThread {
-            Config.entries.forEach{
-                it.uiEl?.isEnabled = enabled
-            }
-        }
+    @Suppress("DEPRECATION")
+    @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
+    fun connectToDevice() {
+        if(!hasPermission()) return
+        val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+        val device =
+        bluetoothAdapter?.bondedDevices?.filter { device -> device.name == Config.deviceName }?.getOrNull(0)
+        device.let { gatt = device?.connectGatt(this, false, bluetoothGattCallback) }
     }
 
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
@@ -106,12 +114,12 @@ class MainActivity : AppCompatActivity() {
         @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
         override fun onConnectionStateChange(btGatt: BluetoothGatt?, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                // Start discovering services
                 gatt = btGatt
-                gatt?.discoverServices()
+                enableAll(true)
+                gatt?.discoverServices() // Start discovering services
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                gatt = null
                 enableAll(false)
-                connectToPairedDevice()
             }
         }
 
@@ -137,6 +145,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        @Suppress("DEPRECATION")
+        @Deprecated("Deprecated in Java")
         @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
         override fun onCharacteristicRead(
             gatt: BluetoothGatt,
@@ -160,6 +170,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        @Suppress("DEPRECATION")
         @RequiresPermission(value = "android.permission.BLUETOOTH_CONNECT")
         override fun onCharacteristicWrite(
             gatt: BluetoothGatt,
@@ -179,6 +190,15 @@ class MainActivity : AppCompatActivity() {
                 val next: BluetoothGattCharacteristic? = Config.entries.filter { it.save }.getOrNull(0)?.gattCharacter
                 next?.let { gatt.writeCharacteristic(next) }
             }
+        }
+    }
+    private fun enableAll(enabled: Boolean) {
+        this@MainActivity.runOnUiThread {
+            Config.entries.forEach{
+                it.uiEl?.isEnabled = enabled
+            }
+            loadButton?.isEnabled = enabled
+            saveButton?.isEnabled = enabled
         }
     }
 }
