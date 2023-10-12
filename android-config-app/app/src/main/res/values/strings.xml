@@ -1,0 +1,14 @@
+<resources>
+    <string name="load">Load</string>
+    <string name="reset">Reset</string>
+    <string name="save">Save</string>
+    <string name="app_name">Config Scroller Pedal</string>
+    <string name="action_time">Action time in ms (100–5000)</string>
+    <string name="x">X–position in px (0–10000)</string>
+    <string name="y_top">Top Y-position in px (&lt; Bottom Y)</string>
+    <string name="y_bottom">Bottom Y-position in px (&gt; Top Y)</string>
+    <string name="scroll_amount">Scrolling amount in px (&gt; 0 &lt; Bottom Y - Top Y)</string>
+    <string name="scroll_delay">Scrolling delay in ms (10–1000)</string>
+    <string name="page_scroll_amount">Page scroll amount in px (&gt; 0 &lt; Bottom Y - Top Y)</string>
+    <string name="page_scroll_steps">Page scroll steps (1–100)</string>
+</resources>
