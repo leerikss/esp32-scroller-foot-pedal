@@ -9,14 +9,19 @@ object Config {
 
     var entries: LinkedList<ConfigEntry> = LinkedList()
 
+    fun getPointEntryByType(type: PointEntryType): ConfigEntry {
+        return entries.filter { (it is PointEntry) && it.type == type }[0]
+    }
+
     init {
-        entries.add(ConfigEntry("a89d0001-543c-4855-be30-f2270a00a83b", "action_time", Validate.BETWEEN, 100, 5000))
-        entries.add(ConfigEntry("a89d0002-543c-4855-be30-f2270a00a83b", "x", Validate.BETWEEN,0, 10000))
-        entries.add(ConfigEntry("a89d0003-543c-4855-be30-f2270a00a83b", "y_top", Validate.GTE1_LTE2, 0, "y_bottom"))
-        entries.add(ConfigEntry("a89d0004-543c-4855-be30-f2270a00a83b", "y_bottom", Validate.LTE1_GTE2, 10000,"y_top"))
-        entries.add(ConfigEntry("a89d0005-543c-4855-be30-f2270a00a83b", "scroll_amount", Validate.GTE1_LTEDIFF, 1, "y_bottom", "y_top"))
-        entries.add(ConfigEntry("a89d0006-543c-4855-be30-f2270a00a83b", "scroll_delay", Validate.BETWEEN, 10, 10000))
-        entries.add(ConfigEntry("a89d0007-543c-4855-be30-f2270a00a83b", "page_scroll_amount", Validate.GTE1_LTEDIFF, 1, "y_bottom", "y_top"))
-        entries.add(ConfigEntry("a89d0008-543c-4855-be30-f2270a00a83b", "page_scroll_steps", Validate.BETWEEN, 1, 100))
+        entries.add(PointEntry("a89d0001-543c-4855-be30-f2270a00a83b", PointEntryType.X1))
+        entries.add(PointEntry("a89d0002-543c-4855-be30-f2270a00a83b", PointEntryType.Y1))
+        entries.add(PointEntry("a89d0003-543c-4855-be30-f2270a00a83b", PointEntryType.X2))
+        entries.add(PointEntry("a89d0004-543c-4855-be30-f2270a00a83b", PointEntryType.Y2))
+        entries.add(SliderEntry("a89d0005-543c-4855-be30-f2270a00a83b", R.id.action_time))
+        entries.add(SliderEntry("a89d0006-543c-4855-be30-f2270a00a83b", R.id.scroll_amount))
+        entries.add(SliderEntry("a89d0007-543c-4855-be30-f2270a00a83b", R.id.scroll_delay))
+        entries.add(SliderEntry("a89d0008-543c-4855-be30-f2270a00a83b", R.id.page_scroll_amount))
+        entries.add(SliderEntry("a89d0009-543c-4855-be30-f2270a00a83b", R.id.page_scroll_steps))
     }
 }

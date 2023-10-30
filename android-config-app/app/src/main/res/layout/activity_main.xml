@@ -15,15 +15,98 @@
             android:id="@+id/layouts"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="5pt"
             android:orientation="vertical"
             tools:ignore="MissingConstraints">
 
             <LinearLayout
                 android:id="@+id/layout_input_texts"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:orientation="vertical"
+                android:gravity="center"
                 tools:ignore="MissingConstraints">
+
+                <Button
+                    android:enabled="false"
+                    android:layout_margin="2pt"
+                    android:id="@+id/scroll_track"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/scroll_track" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/scroll_amount"
+                    android:layout_marginTop="10dp"
+                    />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/scroll_amount"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:valueFrom="1"
+                    android:valueTo="500"
+                    android:enabled="false"
+                    android:stepSize="1"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/scroll_delay"
+                    />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/scroll_delay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:valueFrom="1"
+                    android:valueTo="500"
+                    android:enabled="false"
+                    android:stepSize="1"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/page_scroll_amount"
+                    />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/page_scroll_amount"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:valueFrom="10"
+                    android:valueTo="1000"
+                    android:enabled="false"
+                    android:stepSize="10"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/page_scroll_steps"
+                    />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/page_scroll_steps"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:valueFrom="1"
+                    android:valueTo="50"
+                    android:enabled="false"
+                    android:stepSize="1"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="@string/action_time"
+                    />
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/action_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:valueFrom="100"
+                    android:valueTo="2000"
+                    android:enabled="false"
+                    android:stepSize="100"/>
+
             </LinearLayout>
 
             <LinearLayout
@@ -37,6 +120,7 @@
                     android:layout_margin="2pt"
                     android:id="@+id/load_button"
                     android:layout_width="wrap_content"
+                    android:maxWidth="320dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/load" />
@@ -44,6 +128,7 @@
                     android:layout_margin="2pt"
                     android:id="@+id/save_button"
                     android:enabled="false"
+                    android:maxWidth="320dp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"

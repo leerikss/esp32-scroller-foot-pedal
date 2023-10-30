@@ -4,6 +4,7 @@ import android.Manifest
 import android.bluetooth.*
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -14,25 +15,24 @@ class BLEHandler(private val context: Context) {
     private var gatt: BluetoothGatt? = null
     private var reconnect: ScheduledFuture<*>? = null
 
-    private var onCheckPermissionListener: Runnable? = null
-    fun setOnCheckPermissionListener(impl: Runnable) { onCheckPermissionListener = impl }
-
     private var onConnectListener: Runnable? = null
     fun setOnConnectListener(impl: Runnable) { onConnectListener = impl }
 
     private var onDisconnectListener: Runnable? = null
     fun setOnDisconnectListener(impl: Runnable) { onDisconnectListener = impl }
 
+    private var onBatchStartListener: Runnable? = null
+    fun setOnBatchStartListener(impl: Runnable) { onBatchStartListener = impl }
+
+    private var onBatchFinishListener: Runnable? = null
+    fun setOnBatchFinishListener(impl: Runnable) { onBatchFinishListener = impl }
+
     fun interface ConfigEntryConsumer { fun with(entry: ConfigEntry?) }
-    private var onCharacteristicFoundListener: ConfigEntryConsumer? = null
-    fun setOnCharacteristicFoundListener(impl: ConfigEntryConsumer) { onCharacteristicFoundListener = impl}
+    private var onCharacteristicReadListener: ConfigEntryConsumer? = null
+    fun setOnCharacteristicReadListener(impl: ConfigEntryConsumer) { onCharacteristicReadListener = impl}
 
-    fun interface CharacteristicReadConsumer { fun with(entry: ConfigEntry?, value: String) }
-    private var onCharacteristicReadListener: CharacteristicReadConsumer? = null
-    fun setOnCharacteristicReadListener(impl: CharacteristicReadConsumer) { onCharacteristicReadListener = impl}
-
-    private var onCharacteristicWrittenListener: ConfigEntryConsumer? = null
-    fun setOnCharacteristicWrittenListener(impl: ConfigEntryConsumer) { onCharacteristicWrittenListener = impl}
+    private var onCharacteristicWriteListener: ConfigEntryConsumer? = null
+    fun setOnCharacteristicWriteListener(impl: ConfigEntryConsumer) { onCharacteristicWriteListener = impl}
 
     @Suppress("DEPRECATION")
     fun start() {
@@ -50,25 +50,24 @@ class BLEHandler(private val context: Context) {
 
     fun fetch() {
         if (!checkPermission()) return
+        onBatchStartListener?.run()
         gatt?.discoverServices()
     }
 
     @Suppress("DEPRECATION")
     fun save(characteristic: BluetoothGattCharacteristic? ) {
         if (!checkPermission()) return
+        onBatchStartListener?.run()
         gatt?.writeCharacteristic(characteristic)
     }
 
     private fun checkPermission(): Boolean {
-        return if( ContextCompat.checkSelfPermission(
+        val permission = if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        Manifest.permission.BLUETOOTH_SCAN else Manifest.permission.BLUETOOTH
+        return ( ContextCompat.checkSelfPermission(
                 context,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) == PackageManager.PERMISSION_GRANTED) {
-            true
-        } else {
-            onCheckPermissionListener?.run()
-            false
-        }
+                permission
+            ) == PackageManager.PERMISSION_GRANTED)
     }
 
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
@@ -100,7 +99,6 @@ class BLEHandler(private val context: Context) {
                                     cfg -> cfg.uuid == it?.uuid.toString()}
                                 .getOrNull(0)
                         entry?.characteristic = it
-                        onCharacteristicFoundListener?.with(entry)
                     }
                     // Start fetching characteristics values one by one
                     gatt?.readCharacteristic(Config.entries.first.characteristic)
@@ -120,12 +118,15 @@ class BLEHandler(private val context: Context) {
                 val entry: ConfigEntry? =
                     Config.entries.filter { cfg -> cfg.uuid == charac.uuid.toString()}.getOrNull(0)
                 entry?.let {
-                    onCharacteristicReadListener?.with(it, charac.getStringValue(0))
+                    it.value = charac.getStringValue(0).toFloat()
+                    onCharacteristicReadListener?.with(it)
                     // Read next
                     val index = Config.entries.indexOf(it)
                     if (index < Config.entries.size - 1) {
                         // Read next
                         gatt.readCharacteristic(Config.entries[index + 1].characteristic)
+                    } else {
+                        onBatchFinishListener?.run()
                     }
                 }
             }
@@ -141,11 +142,13 @@ class BLEHandler(private val context: Context) {
             if(status == BluetoothGatt.GATT_SUCCESS) {
                 val entry: ConfigEntry? =
                     Config.entries.filter { it.characteristic == characteristic }.getOrNull(0)
-                onCharacteristicWrittenListener?.with(entry)
+                entry?.unsaved = false
+                onCharacteristicWriteListener?.with(entry)
+
                 // Save next
                 val next: BluetoothGattCharacteristic? =
                     Config.entries.filter { it.unsaved }.getOrNull(0)?.characteristic
-                next?.let { gatt.writeCharacteristic(next) }
+                next?.let { gatt.writeCharacteristic(next) } ?: onBatchFinishListener?.run()
             }
         }
     }

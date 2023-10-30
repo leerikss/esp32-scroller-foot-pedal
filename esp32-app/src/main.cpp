@@ -3,18 +3,24 @@
 #include "config.h"
 
 #define BT_DEV_NAME        "Scroller Pedal"
-#define PEDAL_PIN           4
+#define PEDAL_PIN           1 
 
-enum states { STOP, WAIT_FOR_ACTION, PAGE_DOWN, PAGE_UP, SCROLL_DOWN, SCROLL_UP };
+enum states { STOP, WAIT_FOR_ACTION, PAGE_SCROLL, PAGE_SCROLL_REVERSED, SCROLL, SCROLL_REVERSED };
 
 BleConfigAbsMouse bleMouse(BT_DEV_NAME);
 states state = STOP;
 unsigned long first_press_ms = 0L;
-short x;
-short y;
 bool pedal_state = 0;
 unsigned char presses = 0;
 unsigned char releases = 0;
+
+int x = 0;
+int y = 0;
+int delta_x = 0;
+int delta_y = 0;
+double scroll_distance = 0;
+int scroll_amount = 0;
+int scroll_step = 0;
 unsigned char page_scroll_step = 0;
 
 void set_state_by_action();
@@ -23,7 +29,9 @@ void handle_pedal_on();
 void handle_pedal_off();
 
 void scroll_by_state();
-void scroll(short add_y, short limit_y, short start_y);
+void init_scroll(int scroll_amount);
+void reverse_scroll();
+void scroll();
 void stop_scroll();
 
 void setup() {
@@ -32,8 +40,8 @@ void setup() {
   bleMouse.begin();
 
   config::load();
-  x = config::X;
-  y = config::Y_BOTTOM;
+  x = config::X1;
+  y = config::Y1;
 }
 
 void loop() {
@@ -63,23 +71,26 @@ void loop() {
 }
 
 void set_state_by_action() {
-  // 1 click = Page down
+  // 1 click = Page jump
   if(presses == 1 && releases == 1) {
-    state = PAGE_DOWN;
+    state = PAGE_SCROLL;
     page_scroll_step = 0;
+    init_scroll(config::PAGE_SCROLL_AMOUNT);
   }
-  // 2 clicks = Page up
+  // 2 clicks = Page jump reversed
   else if(presses == 2 && releases == 2) {
-    state = PAGE_UP;
+    state = PAGE_SCROLL_REVERSED;
     page_scroll_step = 0;
+    init_scroll(config::PAGE_SCROLL_AMOUNT);
   }
   // Pedal pressed down = scroll down
   else if(presses == 1 && releases == 0) {
-    state = SCROLL_DOWN;
+    state = SCROLL;
   }
-  // Pedal pressed down after 1 click = scroll up
+  // Pedal pressed down after 1 click = scroll reverse
   else if(presses == 2 && releases == 1) {
-    state = SCROLL_UP;
+    state = SCROLL_REVERSED;
+    init_scroll(config::SCROLL_AMOUNT);
   } 
 }
 
@@ -88,6 +99,7 @@ void handle_pedal_on() {
     case STOP:
       Serial.println("Initial press");
       bleMouse.release();
+      init_scroll(config::SCROLL_AMOUNT);
       state = WAIT_FOR_ACTION;
       first_press_ms = millis();
       presses = 1;
@@ -108,7 +120,7 @@ void handle_pedal_off() {
     case WAIT_FOR_ACTION:
       releases = (presses == 1) ? 1 : 2;
       break;
-    case SCROLL_UP: case SCROLL_DOWN:
+    case SCROLL: case SCROLL_REVERSED:
       stop_scroll();
       break;
     default:
@@ -119,52 +131,82 @@ void handle_pedal_off() {
 void scroll_by_state() {
   switch(state) {
     case WAIT_FOR_ACTION:
-      // If pedal down, scroll down even though final action is not yet set
+      // If pedal down, scroll even though final action is not yet set
       if(pedal_state == LOW) {
-        Serial.print("Scrolling down while waiting for action");
-        scroll(-config::SCROLL_AMOUNT, config::Y_TOP, config::Y_BOTTOM);
+        Serial.print("Scrolling while waiting for action ");
+        scroll();
       }
       break;
-    case PAGE_DOWN:
-      Serial.print("Handling page down ");
-      scroll(-config::PAGE_SCROLL_AMOUNT, config::Y_TOP, config::Y_BOTTOM);
+    case PAGE_SCROLL:
+      Serial.print("Handling page scroll ");
+      scroll();
       page_scroll_step++;
       if(page_scroll_step >= config::PAGE_SCROLL_STEPS) {
         stop_scroll();
       }
       break;
-    case PAGE_UP:
-      Serial.print("Handling page up ");
-      scroll(config::PAGE_SCROLL_AMOUNT, config::Y_BOTTOM, config::Y_TOP);
+    case PAGE_SCROLL_REVERSED:
+      Serial.print("Handling page scroll verversed ");
+      reverse_scroll();
       page_scroll_step++;
       if(page_scroll_step >= config::PAGE_SCROLL_STEPS) {
         stop_scroll();
       }
       break;
-    case SCROLL_UP:
-      Serial.print("Scrolling up ");
-      scroll(config::SCROLL_AMOUNT, config::Y_BOTTOM, config::Y_TOP);
+    case SCROLL:
+      Serial.print("Scrolling ");
+      scroll();
       break;
-    case SCROLL_DOWN:
-      Serial.print("Scrolling down ");
-      scroll(-config::SCROLL_AMOUNT, config::Y_TOP, config::Y_BOTTOM);
+    case SCROLL_REVERSED:
+      Serial.print("Scrolling reversed ");
+      reverse_scroll();
       break;
     default:
       break;
   }
 }
 
-void scroll(short y_amount, short y_limit, short y_start) {
-  Serial.println(y);
-  if((y_amount < 0 && y + y_amount < y_limit) || 
-  (y_amount > 0 && y + y_amount > y_limit)) {
-    y = y_start;
+void init_scroll(int s_amount) {
+  int dx = config::X2 - config::X1;
+  int dy = config::Y2 - config::Y1;
+  int distance = sqrt(dx*dx + dy*dy);
+  int moves = distance/s_amount;
+
+  delta_x = dx/moves;
+  delta_y = dy/moves;
+  
+  scroll_amount = s_amount;
+  scroll_distance = distance;
+}
+
+void reverse_scroll() {
+  scroll_step -= scroll_amount;
+  if(scroll_step < 0) {
+    x = config::X2;
+    y = config::Y2;
+    scroll_step = scroll_distance;
     bleMouse.release();
-    bleMouse.move(x, y);
+    bleMouse.move(x,y);
+    delay(config::SCROLL_DELAY);    
+  }
+  x -= delta_x;
+  y -= delta_y;
+  bleMouse.move(x,y);
+}
+
+void scroll() {
+  scroll_step += scroll_amount;
+  if(scroll_step > scroll_distance) {
+    x = config::X1;
+    y = config::Y1;
+    scroll_step = 0;
+    bleMouse.release();
+    bleMouse.move(x,y);
     delay(config::SCROLL_DELAY);
   }
-  y += y_amount;
-  bleMouse.move(x, y);
+  x += delta_x;
+  y += delta_y;
+  bleMouse.move(x,y);
 }
 
 void stop_scroll() {
