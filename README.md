@@ -17,8 +17,8 @@ Included is also a small Android app (android-config-app) for configuring the sc
 [![Demo video](https://img.youtube.com/vi/rqGKLVZrP6g/0.jpg)](https://www.youtube.com/watch?v=rqGKLVZrP6g)
 
 ## Config App (Android)
-![Config App Settings](https://github.com/leerikss/esp32-scroller-foot-pedal/blob/main/img/config_app1.jpg?raw=true)
-![Scrolling Track Settings](https://github.com/leerikss/esp32-scroller-foot-pedal/blob/main/img/config_app2.jpg?raw=true)
+![Config App](https://github.com/leerikss/esp32-scroller-foot-pedal/blob/main/img/config_app.jpg?raw=true)
+![Scrolling Track Settings](https://github.com/leerikss/esp32-scroller-foot-pedal/blob/main/img/config_scroll_track.jpg?raw=true)
 
 ## Credits
 - [ESP32-BLE-Abs-Mouse](https://github.com/sobrinho/ESP32-BLE-Abs-Mouse)

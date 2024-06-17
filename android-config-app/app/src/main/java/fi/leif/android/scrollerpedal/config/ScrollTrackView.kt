@@ -7,6 +7,7 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.res.ResourcesCompat
 
 class Point(var x: Float, var y: Float)
 
@@ -28,6 +29,17 @@ class ScrollTrackView(context: Context, attrs: AttributeSet?) : View(context, at
     private var dy1 = 0f
     private var dx2 = 0f
     private var dy2 = 0f
+
+    private val infoTextSize = 50f
+    private val infoLineHeight = 80f
+    private val infoTextPaint = Paint().apply {
+        color = Color.GRAY
+        typeface = ResourcesCompat.getFont(context, R.font.bad_script_regular)
+        textSize = infoTextSize
+        isAntiAlias = true
+
+    }
+    private val infoText = context.resources.getString(R.string.scroll_track_info)
 
     constructor(context: Context, point1: Point, point2: Point, screenWidth: Int, screenHeight: Int) : this(context, null) {
         this.p1 = point1
@@ -59,6 +71,10 @@ class ScrollTrackView(context: Context, attrs: AttributeSet?) : View(context, at
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        infoText.split("\n").forEachIndexed { index, line ->
+            canvas.drawText(line, infoTextSize, infoTextSize + infoLineHeight * (index + 1), infoTextPaint)
+        }
 
         canvas.drawCircle(p1.x, p1.y, radius, paintP1)
         canvas.drawCircle(p2.x, p2.y, radius, paintP2)

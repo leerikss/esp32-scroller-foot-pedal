@@ -8,4 +8,5 @@
     <string name="action_time">Action time (ms)</string>
     <string name="load">Load Values</string>
     <string name="save">Save Values</string>
+    <string name="scroll_track_info">Drag the Arrow Head &amp; Tail to\ndefine the Scrolling Direction.\nTap anywhere outside the Arrow\nto exit this view.</string>
 </resources>

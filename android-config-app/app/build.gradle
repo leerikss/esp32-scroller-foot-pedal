@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "fi.leif.android.scrollerpedal.config"
-        minSdk 24
+        minSdk 26
         targetSdk 33
         versionCode 1
         versionName "1.0"
