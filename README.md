@@ -14,7 +14,7 @@ The Foot Pedal enclosure is 3-D printed from STL files found [here](https://www.
 Included is also a small Android app (android-config-app) for configuring the scrolling behaviour over BlueTooth (needs to be Paired with the device).
 
 ## Demo Video
-[![Demo video](https://img.youtube.com/vi/rqGKLVZrP6g/0.jpg)](https://www.youtube.com/watch?v=rqGKLVZrP6g)
+[![Demo video](https://img.youtube.com/vi/qsAiDsyH0F4/0.jpg)](https://www.youtube.com/watch?v=qsAiDsyH0F4)
 
 ## Device
 ![Photo of the Device](https://github.com/leerikss/esp32-scroller-foot-pedal/blob/main/img/device.jpg?raw=true)
